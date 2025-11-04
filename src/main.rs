@@ -70,10 +70,36 @@ impl ColumnFilters {
     pub fn evaluate(&self, flight: &Flight) -> bool {
         self.orig.evaluate(&flight) &&
             self.dest.evaluate(&flight) &&
-            self.mileage.evaluate(&flight) &&
             self.dep_date.evaluate(&flight) &&
+            self.mileage.evaluate(&flight) &&
             self.cancelled.evaluate(&flight) &&
             self.gate.evaluate(&flight)
+    }
+    pub fn evaluate_array(&self, flights: &Vec<Flight>, exclude_idx: usize) -> Vec<bool> {
+        let evals = [
+            self.orig.get_eval_bool_array(&flights),
+                self.dest.get_eval_bool_array(&flights),
+                self.dep_date.get_eval_bool_array(&flights),
+                self.mileage.get_eval_bool_array(&flights),
+                self.cancelled.get_eval_bool_array(&flights),
+                self.gate.get_eval_bool_array(&flights)
+        ];
+
+        assert!(!evals.is_empty());
+        let len = evals[0].len();
+        // Defensive check: ensure all have same length
+        assert!(evals.iter().all(|v| v.len() == len));
+
+        let mut result = vec![true; len]; // Start with all true
+        for (i, eval) in evals.iter().enumerate() {
+            if i == exclude_idx {
+                continue;
+            }
+            for (r, &b) in result.iter_mut().zip(eval.iter()) {
+                *r &= b;
+            }
+        }
+        result
     }
 }
 
@@ -210,6 +236,7 @@ impl App for TableFilterApp {
                         Id::new("orig_filter"),
                         orig_resp,
                         &self.flights,
+                        &self.column_filters.evaluate_array(&self.flights, 0)
                     );
 
                     let (_, dest_resp) = header.col(|ui| {
@@ -222,6 +249,7 @@ impl App for TableFilterApp {
                         Id::new("dest_filter"),
                         dest_resp,
                         &self.flights,
+                        &self.column_filters.evaluate_array(&self.flights,1)
                     );
 
                     let (_, dep_date_resp) = header.col(|ui| {
@@ -234,6 +262,7 @@ impl App for TableFilterApp {
                         Id::new("dep_date_filter"),
                         dep_date_resp,
                         &self.flights,
+                        &self.column_filters.evaluate_array(&self.flights, 2)
                     );
 
                     let (_, mileage_resp) = header.col(|ui| {
@@ -246,6 +275,7 @@ impl App for TableFilterApp {
                         Id::new("mileage_filter"),
                         mileage_resp,
                         &self.flights,
+                        &self.column_filters.evaluate_array(&self.flights, 3)
                     );
 
                     let (_, cancelled_resp) = header.col(|ui| {
@@ -258,6 +288,7 @@ impl App for TableFilterApp {
                         Id::new("cancelled_filter"),
                         cancelled_resp,
                         &self.flights,
+                        &self.column_filters.evaluate_array(&self.flights, 4)
                     );
 
                     let (_, gate_resp) = header.col(|ui| {
@@ -270,6 +301,7 @@ impl App for TableFilterApp {
                         Id::new("gate_filter"),
                         gate_resp,
                         &self.flights,
+                        &self.column_filters.evaluate_array(&self.flights, 5)
                     );
                 })
                 .body(|mut body| {
