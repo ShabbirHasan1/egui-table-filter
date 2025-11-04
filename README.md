@@ -19,4 +19,4 @@ You can also create custom search functionality to parse the strings for special
 - [ ] Add double-clicking sorting functionality on the headers
 - [ ] Document a checklist that is needed for successful application to a table
 - [ ] Explore patterns outside the table in egui-extras, as this widget is agnostic to controls it is bound to
-- [ ] Find opportunities to make more idiomatic without inflicting too much bias
+- [ ] Find opportunities to make more idiomatic without inflicting too much bias (macros might be needed :/)
