@@ -1,8 +1,9 @@
     use std::collections::{HashSet};
     use std::hash::Hash;
+    use std::iter::zip;
     use std::ops::Deref;
     use eframe::emath::RectAlign;
-    use egui::{ScrollArea, Id, Popup, PopupCloseBehavior, Response, Key, TextEdit};
+    use egui::{ScrollArea, Id, Popup, PopupCloseBehavior, Response, Key, TextEdit, RichText, Color32};
     use itertools::Itertools;
 
     pub struct ColumnFilter<T,V: Eq + Hash + Ord> {
@@ -54,6 +55,11 @@
             let f = self.get_value.deref();
             !self.unselected_values.contains(&f(t))
         }
+        pub fn get_eval_bool_array(&self, data: &Vec<T>) -> Vec<bool> {
+            data.iter()
+                .map(|t| self.evaluate(t))
+                .collect()
+        }
         pub fn contains(&self, value: &V) -> bool {
             !self.unselected_values.contains(value)
         }
@@ -68,7 +74,9 @@
 
         pub fn bind(&mut self, id: Id,
                     response: Response,
-                    data: &Vec<T>)  {
+                    data: &Vec<T>,
+                    filter_array: &Vec<bool>
+        )  {
 
             // add popup
             Popup::menu(&response).id(id)
@@ -98,19 +106,30 @@
 
                                 ui.vertical(|ui| {
 
+                                    let visible_unique: HashSet<V> = zip(data, filter_array)
+                                        .map(|(d, b)| (self.get_value(d),b))
+                                        .filter(|(d,b)| **b)
+                                        .map(|(d,b)| d)
+                                        .collect();
+
                                     data.iter()
                                         .filter(|d| self.search_field.is_empty() ||  self.search_pattern(&self.search_field, &self.get_string_value(d)))
                                         .unique_by(|d| self.get_value(d))
                                         .sorted_by_key(|d| self.get_value(d))
                                         .for_each(|d| {
                                             let v = self.get_value(d);
-                                            let s = self.get_string_value(d);
+
+                                            let label = if !visible_unique.contains(&v) {
+                                                RichText::new(&self.get_string_value(d)).weak()
+                                            } else {
+                                                RichText::new(&self.get_string_value(d))
+                                            };
 
                                             let mut checked = !self.unselected_values.contains(&v) && (
                                                 self.search_field.is_empty() || self.search_pattern(&self.search_field, &self.get_string_value(d))
                                             );
 
-                                            if ui.checkbox(&mut checked, s).clicked() {
+                                            if ui.checkbox(&mut checked, label).clicked() {
                                                 if checked {
                                                     self.unselected_values.remove(&v);
                                                 } else {
