@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::error::Error;
 use eframe::egui;
 use eframe::App;
 use chrono::NaiveDate;
@@ -164,7 +165,46 @@ impl Default for ColumnFilters {
             mileage: ColumnFilter::new(
                 |flt: &Flight| flt.mileage,
                 |flt| flt.mileage.to_string(),
-                |pattern, target| target.contains(pattern),
+                |pattern, target|
+                    return if Regex::new("[0-9]+><[0-9]+").unwrap().is_match(pattern) {
+                        let (int_left, int_right) = pattern.split("><").collect_tuple().unwrap();
+
+                        let u_left = int_left.parse::<usize>();
+                        let u_right = int_right.parse::<usize>();
+                        let u = target.parse::<usize>();
+
+                        if let Ok(u_left) = u_left {
+                            if let Ok(u_right) = u_right {
+                                if let Ok(u) = u {
+                                    u_left <= u && u <= u_right
+                                } else {
+                                    false
+                                }
+                            } else { false }
+                        } else { false }
+                    }
+                    else if Regex::new("<[0-9]+").unwrap().is_match(pattern) {
+                        let p = pattern.replace("<", "");
+
+                        if let Ok(p) = p.parse::<usize>() {
+                            if let Ok(s) = target.parse::<usize>() {
+                                s <= p
+                            } else { false }
+                        } else { false }
+                    } else if Regex::new(">[0-9]+").unwrap().is_match(pattern) {
+
+                        let p = pattern.replace(">", "");
+
+                        if let Ok(p) = p.parse::<usize>() {
+                            if let Ok(s) = target.parse::<usize>() {
+                                s >= p
+                            } else { false }
+                        } else { false }
+                    }
+                    else {
+                        target.starts_with(pattern)
+                    }
+                ,
             ),
             cancelled: ColumnFilter::new(
                 |flt: &Flight| flt.cancelled,
